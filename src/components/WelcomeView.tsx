@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next'
 import { ArrowRight, MapPin, Sparkles, Store } from 'lucide-react'
 import hotpot from '@/assets/hotpot.jpg'
 import { Button } from '@/components/ui/button'
+import { ChildModeControl } from '@/components/ChildModeControl'
+import { useChildMode } from '@/hooks/useChildMode'
 import { tableAreas } from '@/data/menu'
 
 interface WelcomeViewProps {
@@ -11,6 +13,7 @@ interface WelcomeViewProps {
 
 export function WelcomeView({ table, onEnter }: WelcomeViewProps) {
   const { t } = useTranslation()
+  const { enabled: childMode } = useChildMode()
   const areaKey = tableAreas[table]
   const tableLabel = areaKey ? `${table} · ${t(areaKey)}` : table
 
@@ -20,6 +23,10 @@ export function WelcomeView({ table, onEnter }: WelcomeViewProps) {
       <div className="absolute -bottom-24 -left-20 h-72 w-72 rounded-full bg-amber-100 blur-3xl" />
 
       <div className="relative mx-auto w-full max-w-md px-5 py-10">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <ChildModeControl variant="pill" />
+          {childMode && <span className="text-xs font-semibold text-charcoal-500">{t('child.welcome_note')}</span>}
+        </div>
         <section className="animate-rise overflow-hidden rounded-3xl border border-white/80 bg-white/90 shadow-float backdrop-blur">
           {/* 门店图片 */}
           <div className="relative h-48 overflow-hidden sm:h-56">

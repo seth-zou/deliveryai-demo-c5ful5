@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next'
 import { Check, ChevronRight, MapPin, QrCode, Sparkles, Users } from 'lucide-react'
 import hotpot from '@/assets/hotpot.jpg'
 import { Button } from '@/components/ui/button'
+import { ChildModeControl } from '@/components/ChildModeControl'
+import { useChildMode } from '@/hooks/useChildMode'
 
 const tableOptions = [
   { code: 'A08', areaKey: 'bind.area.hall', seats: 4 },
@@ -14,12 +16,17 @@ interface HomeViewProps { onBind: (table: string) => void }
 
 export function HomeView({ onBind }: HomeViewProps) {
   const { t } = useTranslation()
+  const { enabled: childMode } = useChildMode()
   return (
     <main className="relative min-h-screen overflow-hidden bg-rice-100 paper-noise">
       <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-chili-100 blur-3xl" />
       <div className="absolute -bottom-24 -left-20 h-72 w-72 rounded-full bg-amber-100 blur-3xl" />
       <div className="relative mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-5 py-10 lg:grid-cols-2 lg:px-10">
         <section className="animate-rise">
+          <div className="mb-5 flex flex-wrap items-center gap-3">
+            <ChildModeControl variant="pill" />
+            {childMode && <span className="text-xs font-semibold text-charcoal-500">{t('child.home_note')}</span>}
+          </div>
           <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-chili-500/20 bg-white/80 px-3 py-2 text-xs font-bold text-chili-600 shadow-sm">
             <Sparkles size={14} /> {t('common.concept_badge')}
           </div>

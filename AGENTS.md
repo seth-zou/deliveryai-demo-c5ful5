@@ -9,6 +9,8 @@
 
 主流程视图状态机：`home → welcome → menu → order → checkout`。视图经 hash 路由与 URL 一一对应（`#/home`、`#/welcome`、`#/menu`、`#/order`、`#/checkout`），支持深链接与浏览器前进/后退；选用 hash 模式（非 History 模式）以兼容 Vite `base './'` 与 GitHub Pages 子路径部署。
 
+已支持老人模式与儿童模式：老人模式通过 `html.elderly` 放大字号；儿童模式通过 `html.child-mode`、青少年受限口味与家长密码退出实现，状态按设备记忆（`localStorage`）。
+
 ## 技术栈
 
 React 18 · TypeScript ~5.6 · Vite 6 · Tailwind CSS 3.4 · Radix UI（Dialog）· lucide-react · class-variance-authority · i18next（中/英）· Playwright（E2E）。状态用 `useReducer` 内存态管理；ESM；路径别名 `@` → `src/`。
@@ -25,12 +27,14 @@ src/
 ├── state/orderReducer.ts  # 订单/购物车/服务/售罄/支付 reducer
 ├── data/menu.ts           # 菜品/分类/桌台静态数据
 ├── hooks/useElderlyMode.ts# 老人模式：localStorage + html.elderly
+├── hooks/useChildMode.tsx # 儿童模式：localStorage + 家长密码 + html.child-mode
 ├── hooks/useViewRoute.ts  # 视图 ↔ URL hash 双向同步（含深链接/非法地址纠正）
 ├── lib/utils.ts           # cn（类名合并）、money（¥ 格式化）
 ├── components/            # 页面组件（HomeView/WelcomeView/MenuView/OrderView/CheckoutView 对应各视图）；通用件在 components/ui/（button、dialog）
 └── assets/                # hotpot/broth/beef/vegetables 图片
 e2e/super-spicy.spec.ts    # 超级辣风险提示 E2E 验收
 e2e/view-routing.spec.ts   # 视图 URL hash 路由 E2E 验收
+e2e/child-mode.spec.ts     # 儿童模式开启/受限/退出 E2E 验收
 index.html                 # 入口，含初始化语言的内联脚本
 tailwind.config.js         # 自定义色板；vite.config.ts 配 base './' 与 @ 别名
 playwright.config.ts       # E2E 配置
@@ -58,7 +62,7 @@ playwright.config.ts       # E2E 配置
 - 页面组件放 `src/components/`，通用件放 `src/components/ui/`；弹窗用封装的 `Dialog`，按钮用 CVA `Button`（default/secondary/outline/ghost），图标用 lucide-react 并靠 `currentColor` 继承。
 - 样式只用 Tailwind 类名，不用 CSS Modules / styled-components。
 - 新增 i18n 文案在 `src/i18n.ts` 的 zh/en 两处同步添加，按功能分组（`common.`、`menu.`、`cart.`、`order.` 等）。
-- 新增 `localStorage` 持久化一律 `try/catch` 包裹，不可用时降级内存态；现有 key：`i18nextLng`、`elderly-mode`（`true`/`false`）。
+- 新增 `localStorage` 持久化一律 `try/catch` 包裹，不可用时降级内存态；现有 key：`i18nextLng`、`elderly-mode`（`true`/`false`）、`child-mode`（`true`/`false`）、`child-mode-pin-hash`（演示用密码摘要）。
 - 需要在 React 挂载前设置 html 属性/class 时，扩展 `index.html` 的内联脚本。
 - npm 源默认走 `https://registry.npmmirror.com`（见根目录与 `server/.npmrc`）。
 

@@ -6,6 +6,7 @@ import { HomeView } from '@/components/HomeView'
 import { WelcomeView } from '@/components/WelcomeView'
 import { CartPanel } from '@/components/CartPanel'
 import { CheckoutView } from '@/components/CheckoutView'
+import { ChildModeCheckoutBlocked } from '@/components/ChildModeCheckoutBlocked'
 import { DemoConsole } from '@/components/DemoConsole'
 import { MenuView } from '@/components/MenuView'
 import { OrderView } from '@/components/OrderView'
@@ -13,6 +14,7 @@ import { ServiceSheet } from '@/components/ServiceSheet'
 import { TopBar } from '@/components/TopBar'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { useChildMode } from '@/hooks/useChildMode'
 import { useElderlyMode } from '@/hooks/useElderlyMode'
 import { initialViewFromHash, useViewRoute } from '@/hooks/useViewRoute'
 import { orderReducer, initialState } from '@/state/orderReducer'
@@ -24,15 +26,17 @@ function createInitialState(): AppState {
   const search = new URLSearchParams(window.location.search)
   const requestedView = initialViewFromHash()
 
-  // preview=menu：预置一桌带购物车的点餐态，供设计/截图预览
-  if (search.get('preview') === 'menu') {
+  // preview=menu / preview=child-mode：预置一桌带购物车的点餐态，供设计/截图预览
+  const preview = search.get('preview')
+  if (preview === 'menu' || preview === 'child-mode') {
     const product = products[2]
     const spec = [i18next.t('menu.option.full'), i18next.t('menu.option.original')].join(' · ')
+    const orderedBy = preview === 'child-mode' ? i18next.t('child.child_diner') : '姚乾'
     return {
       ...initialState,
       table: 'A08',
       view: 'menu',
-      cart: [{ uid: 'preview-item', productId: product.id, name: i18next.t(product.name), price: product.price, quantity: 1, image: product.image, spec, orderedBy: '姚乾' }],
+      cart: [{ uid: 'preview-item', productId: product.id, name: i18next.t(product.name), price: product.price, quantity: 1, image: product.image, spec, orderedBy }],
       lastMessage: initialState.lastMessage,
     }
   }
@@ -49,12 +53,18 @@ function createInitialState(): AppState {
 export default function App() {
   const { t, i18n } = useTranslation()
   const [state, dispatch] = useReducer(orderReducer, undefined, createInitialState)
+  const childMode = useChildMode()
   const { enabled: elderly, toggle: toggleElderly } = useElderlyMode()
   const [serviceOpen, setServiceOpen] = useState(false)
   const [consoleOpen, setConsoleOpen] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
   const cartTotal = state.cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const waitingServices = state.services.filter((service) => service.status === 'waiting').length
+
+  // 开启儿童模式时立即关闭仅家长可用的演示控制台。
+  useEffect(() => {
+    if (childMode.enabled) setConsoleOpen(false)
+  }, [childMode.enabled])
 
   // 视图 ↔ URL hash 双向同步；未绑定桌台时只有 home 可达，其余地址回落到 home
   const canView = useCallback((view: ViewName) => view === 'home' || !!state.table, [state.table])
@@ -111,16 +121,18 @@ export default function App() {
 
       {state.view === 'menu' && (
         <main className="mx-auto grid max-w-7xl gap-6 px-4 py-5 pb-28 lg:grid-cols-3 lg:px-6 lg:py-7 lg:pb-8">
-          <div className="lg:col-span-2">
+          <div className="min-w-0 lg:col-span-2">
             <MenuView diners={state.diners} soldOut={state.soldOut} onAdd={(item) => dispatch({ type: 'ADD_CART', item })} />
           </div>
           <aside className="hidden lg:block">
             <div className="sticky top-28">
               <CartPanel items={state.cart} onQuantity={(uid, delta) => dispatch({ type: 'CHANGE_QTY', uid, delta })} onSubmit={submitOrder} />
-              <div className="mt-4 rounded-2xl border border-amber-400/30 bg-amber-100/70 p-4 text-sm text-charcoal-700">
-                <p className="font-bold">{t('common.collab_title')}</p>
-                <p className="mt-1 leading-6 text-charcoal-500">{t('common.collab_desc')}</p>
-              </div>
+              {!childMode.enabled && (
+                <div className="mt-4 rounded-2xl border border-amber-400/30 bg-amber-100/70 p-4 text-sm text-charcoal-700">
+                  <p className="font-bold">{t('common.collab_title')}</p>
+                  <p className="mt-1 leading-6 text-charcoal-500">{t('common.collab_desc')}</p>
+                </div>
+              )}
             </div>
           </aside>
         </main>
@@ -137,11 +149,13 @@ export default function App() {
       )}
 
       {state.view === 'checkout' && (
-        <CheckoutView items={state.orderItems} paid={state.paid} onPay={() => dispatch({ type: 'PAY' })} onBack={() => changeView('order')} />
+        childMode.enabled && !state.paid
+          ? <ChildModeCheckoutBlocked onBack={() => changeView('order')} />
+          : <CheckoutView items={state.orderItems} paid={state.paid} onPay={() => dispatch({ type: 'PAY' })} onBack={() => changeView('order')} />
       )}
 
       <ServiceSheet open={serviceOpen} requests={state.services} onOpenChange={setServiceOpen} onCall={(service) => dispatch({ type: 'CALL_SERVICE', service })} />
-      <DemoConsole
+      {!childMode.enabled && <DemoConsole
         open={consoleOpen}
         table={state.table}
         stage={state.orderStage}
@@ -152,7 +166,7 @@ export default function App() {
         onSoldOut={(productId) => dispatch({ type: 'TOGGLE_SOLD_OUT', productId })}
         onRespond={() => dispatch({ type: 'RESPOND_SERVICES' })}
         onReset={() => { dispatch({ type: 'RESET' }); setConsoleOpen(false) }}
-      />
+      />}
 
       <Dialog open={cartOpen} onOpenChange={setCartOpen}>
         <DialogContent title={t('cart.dialog_title')}>
@@ -169,14 +183,14 @@ export default function App() {
         )}
       </div>
 
-      <nav className="safe-bottom fixed bottom-0 left-0 right-0 z-30 grid grid-cols-4 border-t border-charcoal-900/5 bg-white/95 px-2 pt-2 backdrop-blur lg:hidden">
+      <nav className={`safe-bottom fixed bottom-0 left-0 right-0 z-30 grid ${childMode.enabled ? 'grid-cols-3' : 'grid-cols-4'} border-t border-charcoal-900/5 bg-white/95 px-2 pt-2 backdrop-blur lg:hidden`}>
         <MobileNav active={state.view === 'menu'} icon={MenuIcon} label={t('common.nav_menu')} onClick={() => changeView('menu')} />
         <MobileNav active={state.view === 'order'} icon={ClipboardList} label={t('common.nav_order')} onClick={() => changeView('order')} />
         <MobileNav active={serviceOpen} icon={ConciergeBell} label={t('common.nav_service')} badge={waitingServices} onClick={() => setServiceOpen(true)} />
-        <MobileNav active={consoleOpen} icon={LayoutDashboard} label={t('common.nav_demo')} onClick={() => setConsoleOpen(true)} />
+        {!childMode.enabled && <MobileNav active={consoleOpen} icon={LayoutDashboard} label={t('common.nav_demo')} onClick={() => setConsoleOpen(true)} />}
       </nav>
 
-      <div className="pointer-events-none fixed left-1/2 top-24 z-40 -translate-x-1/2 rounded-full bg-charcoal-900/90 px-4 py-2 text-xs font-semibold text-white shadow-float">
+      <div className={`pointer-events-none fixed left-1/2 z-40 -translate-x-1/2 rounded-full bg-charcoal-900/90 px-4 py-2 text-xs font-semibold text-white shadow-float ${childMode.enabled ? 'top-36' : 'top-24'}`}>
         {state.lastMessage}
       </div>
     </div>

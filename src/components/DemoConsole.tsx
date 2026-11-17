@@ -3,6 +3,7 @@ import { CheckCircle2, ChefHat, RotateCcw, Store, ToggleLeft, UtensilsCrossed, X
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { products, tableAreas } from '@/data/menu'
+import { useChildMode } from '@/hooks/useChildMode'
 import type { OrderStage, ServiceRequest } from '@/types'
 
 const stageIcons: Record<OrderStage, typeof ChefHat> = {
@@ -28,9 +29,11 @@ interface DemoConsoleProps {
 
 export function DemoConsole({ open, table, stage, soldOut, services, onOpenChange, onStage, onSoldOut, onRespond, onReset }: DemoConsoleProps) {
   const { t } = useTranslation()
+  const { enabled: childMode } = useChildMode()
   const waiting = services.filter((service) => service.status === 'waiting').length
   const areaKey = tableAreas[table]
   const tableLabel = areaKey ? `${table} · ${t(areaKey)}` : table
+  if (childMode) return null
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title={t('console.title')} className="md:max-w-2xl">

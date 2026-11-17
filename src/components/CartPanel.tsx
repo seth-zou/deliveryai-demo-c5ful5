@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import { Check, Minus, Plus, ShoppingBasket, Trash2, Users } from 'lucide-react'
+import { Check, Minus, Plus, ShieldCheck, ShoppingBasket, Trash2, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useChildMode } from '@/hooks/useChildMode'
 import { money } from '@/lib/utils'
 import type { CartItem } from '@/types'
 
@@ -13,6 +14,7 @@ interface CartPanelProps {
 
 export function CartPanel({ items, compact, onQuantity, onSubmit }: CartPanelProps) {
   const { t } = useTranslation()
+  const { enabled: childMode } = useChildMode()
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const people = [...new Set(items.map((item) => item.orderedBy))]
 
@@ -30,7 +32,9 @@ export function CartPanel({ items, compact, onQuantity, onSubmit }: CartPanelPro
     <section className={`rounded-3xl border border-charcoal-900/5 bg-white shadow-card ${compact ? 'p-4' : 'p-5'}`}>
       <div className="flex items-center justify-between">
         <div><h3 className="text-lg font-extrabold text-charcoal-900">{t('cart.title')}</h3><p className="mt-1 text-xs text-charcoal-500">{t('cart.item_count', { count: items.reduce((sum, item) => sum + item.quantity, 0) })}</p></div>
-        <span className="flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-charcoal-700"><Users size={13} />{t('cart.people', { count: people.length })}</span>
+        {childMode
+          ? <span className="flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-charcoal-700"><ShieldCheck size={13} className="text-amber-500" />{t('child.cart_badge')}</span>
+          : <span className="flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-charcoal-700"><Users size={13} />{t('cart.people', { count: people.length })}</span>}
       </div>
       <div className="mt-5 space-y-4">
         {items.map((item) => (
@@ -56,7 +60,7 @@ export function CartPanel({ items, compact, onQuantity, onSubmit }: CartPanelPro
         <div className="mt-2 flex justify-between font-extrabold text-charcoal-900"><span>{t('cart.estimated')}</span><span className="text-xl text-chili-500">{money(subtotal)}</span></div>
       </div>
       <Button onClick={onSubmit} className="mt-4 w-full"><Check size={17} />{compact ? t('cart.submit_new') : t('cart.submit')}</Button>
-      <p className="mt-3 text-center text-xs text-charcoal-500">{t('cart.submit_hint')}</p>
+      <p className="mt-3 text-center text-xs text-charcoal-500">{childMode ? t('child.cart_note') : t('cart.submit_hint')}</p>
     </section>
   )
 }

@@ -1,7 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { BellRing, CheckCircle2, Clock3, Droplets, GlassWater, Receipt, Soup, Utensils } from 'lucide-react'
+import { BellRing, CheckCircle2, Clock3, Droplets, GlassWater, Receipt, ShieldCheck, Soup, Utensils } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { isChildBlockedService } from '@/data/childMode'
+import { useChildMode } from '@/hooks/useChildMode'
 import type { ServiceRequest } from '@/types'
 
 const services = [
@@ -20,12 +22,20 @@ interface ServiceSheetProps {
 
 export function ServiceSheet({ open, requests, onOpenChange, onCall }: ServiceSheetProps) {
   const { t } = useTranslation()
+  const { enabled: childMode } = useChildMode()
+  const visibleServices = childMode ? services.filter(({ key }) => !isChildBlockedService(key)) : services
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title={t('service.title')}>
         <p className="mt-2 text-sm text-charcoal-500">{t('service.desc')}</p>
+        {childMode && (
+          <p className="mt-3 flex items-start gap-2 rounded-xl bg-amber-100/70 p-3 text-xs leading-5 text-charcoal-700">
+            <ShieldCheck size={15} className="mt-0.5 shrink-0 text-amber-500" />
+            {t('child.service_note')}
+          </p>
+        )}
         <div className="mt-5 grid grid-cols-2 gap-3">
-          {services.map(({ key, icon: Icon }) => (
+          {visibleServices.map(({ key, icon: Icon }) => (
             <button key={key} onClick={() => onCall(key)} className="rounded-2xl border border-charcoal-900/5 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-chili-500/30 hover:shadow-card">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-chili-50 text-chili-500"><Icon size={20} /></span>
               <p className="mt-3 font-bold text-charcoal-900">{t(`${key}.name`)}</p><p className="mt-1 text-xs leading-5 text-charcoal-500">{t(`${key}.desc`)}</p>

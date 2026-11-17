@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, Check, Flame, Plus, Search, Sparkles, Users } from 'lucide-react'
+import { AlertTriangle, Baby, Check, Flame, Plus, Search, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import { categories, products } from '@/data/menu'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { isChildBlockedOption } from '@/data/childMode'
+import { useChildMode } from '@/hooks/useChildMode'
 import { money, uid } from '@/lib/utils'
 import type { CartItem, Product } from '@/types'
 
@@ -15,6 +17,8 @@ interface MenuViewProps {
 
 export function MenuView({ diners, soldOut, onAdd }: MenuViewProps) {
   const { t } = useTranslation()
+  const { enabled: childMode } = useChildMode()
+  const childDiner = t('child.child_diner')
   const [category, setCategory] = useState('menu.cat.recommend')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Product | null>(null)
@@ -49,11 +53,16 @@ export function MenuView({ diners, soldOut, onAdd }: MenuViewProps) {
     return matchCategory && matchSearch
   }), [category, search, t])
 
+  const childSafeOptions = (options?: string[]) => (childMode && options ? options.filter((option) => !isChildBlockedOption(option)) : options)
+
   const openSpec = (product: Product) => {
     setSelected(product)
-    setPortion(product.options?.portion?.[1] || product.options?.portion?.[0] || '')
-    setFlavor(product.options?.flavor?.[0] || '')
-    setSpicy(product.options?.spicy?.[0] || '')
+    const portions = childSafeOptions(product.options?.portion)
+    const flavors = childSafeOptions(product.options?.flavor)
+    const spicies = childSafeOptions(product.options?.spicy)
+    setPortion(portions?.[1] || portions?.[0] || '')
+    setFlavor(flavors?.[0] || '')
+    setSpicy(spicies?.[0] || '')
   }
 
   const addSelected = () => {
@@ -64,7 +73,7 @@ export function MenuView({ diners, soldOut, onAdd }: MenuViewProps) {
       specParts.push(t('cart.confirmed_risk'))
     }
     const spec = specParts.join(' · ') || t('menu.standard')
-    onAdd({ uid: uid(), productId: selected.id, name: t(selected.name), price: Math.round(selected.price * portionFactor), quantity: 1, image: selected.image, spec, orderedBy: diner })
+    onAdd({ uid: uid(), productId: selected.id, name: t(selected.name), price: Math.round(selected.price * portionFactor), quantity: 1, image: selected.image, spec, orderedBy: childMode ? childDiner : diner })
     setSelected(null)
   }
 
@@ -73,8 +82,10 @@ export function MenuView({ diners, soldOut, onAdd }: MenuViewProps) {
       <div className="relative overflow-hidden rounded-3xl bg-charcoal-900 p-5 text-white shadow-card sm:p-7">
         <div className="absolute -right-10 -top-20 h-56 w-56 rounded-full bg-chili-500/30 blur-3xl" />
         <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div><span className="flex items-center gap-2 text-xs font-bold text-amber-400"><Sparkles size={14} />{t('menu.hero_badge')}</span><h1 className="mt-2 text-3xl font-extrabold sm:text-4xl">{t('menu.hero_title')}</h1><p className="mt-2 text-sm text-rice-200">{t('menu.hero_diners', { count: diners.length })}</p></div>
-          <div className="flex -space-x-2">{diners.map((name, index) => <span key={name} title={name} className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-charcoal-900 text-xs font-bold ${index === 0 ? 'bg-chili-500' : index === 1 ? 'bg-amber-400 text-charcoal-900' : 'bg-rice-200 text-charcoal-900'}`}>{name.slice(0, 1)}</span>)}</div>
+          <div className="min-w-0"><span className="flex items-center gap-2 text-xs font-bold text-amber-400"><Sparkles size={14} />{t('menu.hero_badge')}</span><h1 className="mt-2 break-words text-3xl font-extrabold sm:text-4xl">{childMode ? t('child.hero_title') : t('menu.hero_title')}</h1><p className="mt-2 text-sm text-rice-200">{childMode ? t('child.hero_desc') : t('menu.hero_diners', { count: diners.length })}</p></div>
+          {childMode
+            ? <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-charcoal-900 bg-amber-400 text-charcoal-900"><ShieldCheck size={18} /></span>
+            : <div className="flex -space-x-2">{diners.map((name, index) => <span key={name} title={name} className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-charcoal-900 text-xs font-bold ${index === 0 ? 'bg-chili-500' : index === 1 ? 'bg-amber-400 text-charcoal-900' : 'bg-rice-200 text-charcoal-900'}`}>{name.slice(0, 1)}</span>)}</div>}
         </div>
       </div>
 
@@ -103,18 +114,22 @@ export function MenuView({ diners, soldOut, onAdd }: MenuViewProps) {
         })}
       </div>
 
+      {(() => { const portionOptions = childSafeOptions(selected?.options?.portion); const flavorOptions = childSafeOptions(selected?.options?.flavor); const spicyOptions = childSafeOptions(selected?.options?.spicy); return (
       <Dialog open={!!selected} onOpenChange={(open) => { if (!open) { setSelected(null); setShowRiskWarning(false) } }}>
         <DialogContent title={selected ? t(selected.name) : ''}>
           {selected && <>
             <div className="mt-4 flex gap-4 rounded-2xl bg-white p-3"><img src={selected.image} alt={t(selected.name)} className="h-24 w-24 rounded-xl object-cover" /><div><p className="text-sm leading-6 text-charcoal-500">{t(selected.description)}</p><p className="mt-2 text-xl font-extrabold text-chili-500">{money(selected.price)} <small className="text-xs font-medium text-charcoal-500">{t('menu.from')}</small></p></div></div>
-            {selected.options?.portion && <OptionRow label={t('menu.select_portion')} options={selected.options.portion} value={portion} onChange={setPortion} t={t} />}
-            {selected.options?.flavor && <OptionRow label={t('menu.select_flavor')} options={selected.options.flavor} value={flavor} onChange={setFlavor} t={t} />}
-            {selected.options?.spicy && <OptionRow label={t('menu.select_spicy')} icon={<Flame size={15} className="text-chili-500" />} options={selected.options.spicy} value={spicy} onChange={handleSpicyChange} t={t} />}
-            <div className="mt-5"><p className="mb-3 flex items-center gap-2 text-sm font-bold text-charcoal-900"><Users size={16} />{t('menu.who_ordered')}</p><div className="flex gap-2">{diners.map((name) => <button key={name} onClick={() => setDiner(name)} className={`rounded-full px-4 py-2 text-sm font-bold ${diner === name ? 'bg-amber-400 text-charcoal-900' : 'bg-white text-charcoal-500'}`}>{name}</button>)}</div></div>
+            {!!portionOptions?.length && <OptionRow label={t('menu.select_portion')} options={portionOptions} value={portion} onChange={setPortion} t={t} />}
+            {!!flavorOptions?.length && <OptionRow label={t('menu.select_flavor')} options={flavorOptions} value={flavor} onChange={setFlavor} t={t} />}
+            {!!spicyOptions?.length && <OptionRow label={t('menu.select_spicy')} icon={<Flame size={15} className="text-chili-500" />} options={spicyOptions} value={spicy} onChange={handleSpicyChange} t={t} />}
+            {childMode && !!spicyOptions?.length && <p className="mt-3 rounded-xl bg-amber-100/70 px-3 py-2 text-xs font-semibold leading-5 text-charcoal-700">{t('child.menu_note')}</p>}
+            {!childMode && <div className="mt-5"><p className="mb-3 flex items-center gap-2 text-sm font-bold text-charcoal-900"><Users size={16} />{t('menu.who_ordered')}</p><div className="flex gap-2">{diners.map((name) => <button key={name} onClick={() => setDiner(name)} className={`rounded-full px-4 py-2 text-sm font-bold ${diner === name ? 'bg-amber-400 text-charcoal-900' : 'bg-white text-charcoal-500'}`}>{name}</button>)}</div></div>}
+            {childMode && <p className="mt-5 flex items-center gap-2 text-sm font-bold text-charcoal-900"><Baby size={16} className="text-amber-500" />{t('child.ordered_by_child')}</p>}
             <Button onClick={addSelected} className="mt-6 w-full"><Plus size={17} />{t('menu.add_to_cart')}</Button>
           </>}
         </DialogContent>
       </Dialog>
+      ) })()}
 
       <Dialog open={showRiskWarning} onOpenChange={(open) => !open && cancelSuperSpicy()}>
         <DialogContent title={t('menu.super_spicy_warning_title')}>
