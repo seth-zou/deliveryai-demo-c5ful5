@@ -4,6 +4,8 @@ const CHROMIUM_PATH = process.env.PLAYWRIGHT_CHROMIUM_PATH || '/opt/chromium.org
 // 端口可经 PLAYWRIGHT_PORT 覆盖，避免与本机其它 dev server（默认 5173）冲突
 const PORT = Number(process.env.PLAYWRIGHT_PORT || 5173)
 const BASE_URL = `http://localhost:${PORT}`
+const PREVIEW_PORT = Number(process.env.PLAYWRIGHT_PREVIEW_PORT || 4399)
+const PREVIEW_BASE_URL = `http://localhost:${PREVIEW_PORT}`
 
 export default defineConfig({
   testDir: './e2e',
@@ -27,10 +29,19 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
-  webServer: {
-    command: `npm run dev -- --port ${PORT} --strictPort`,
-    url: BASE_URL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 30000,
-  },
+  webServer: [
+    {
+      command: `npm run dev -- --port ${PORT} --strictPort`,
+      url: BASE_URL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30000,
+    },
+    {
+      // 生产构建产物：仅供“站点存储不可用”等无法在 dev HMR 下复现的降级用例（REQ-008）
+      command: `npm run build && npx vite preview --port ${PREVIEW_PORT} --strictPort`,
+      url: PREVIEW_BASE_URL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120000,
+    },
+  ],
 })

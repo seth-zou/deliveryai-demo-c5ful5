@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle, Baby, Check, Flame, Plus, Search, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import { categories, products } from '@/data/menu'
@@ -65,11 +65,38 @@ export function MenuView({ diners, soldOut, onAdd }: MenuViewProps) {
     setSpicy(spicies?.[0] || '')
   }
 
+  // 加购时按当前模式重新计算允许项，不信任 state：跨标签页在弹窗打开期间开启儿童模式时，
+  // 旧的受限口味（重辣/超级辣/香辣腌制）不得写入购物车（T-02）。
+  const resolveSelections = () => {
+    const allowedPortions = childSafeOptions(selected?.options?.portion)
+    const allowedFlavors = childSafeOptions(selected?.options?.flavor)
+    const allowedSpicies = childSafeOptions(selected?.options?.spicy)
+    const pick = (allowed: string[] | undefined, value: string) =>
+      allowed?.length ? (allowed.includes(value) ? value : allowed[0]) : value
+    return {
+      portion: pick(allowedPortions, portion),
+      flavor: pick(allowedFlavors, flavor),
+      spicy: pick(allowedSpicies, spicy),
+    }
+  }
+
+  // 模式切换时把弹窗内已选中的非法项重置为第一个允许项，避免界面与实际加购不一致。
+  useEffect(() => {
+    if (!childMode || !selected) return
+    const resolved = resolveSelections()
+    setPortion(resolved.portion)
+    setFlavor(resolved.flavor)
+    setSpicy(resolved.spicy)
+    setShowRiskWarning(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childMode, selected])
+
   const addSelected = () => {
     if (!selected) return
-    const portionFactor = portion === 'menu.option.half' ? 0.58 : 1
-    const specParts = [portion, flavor, spicy].filter(Boolean).map((key) => t(key))
-    if (spicy === 'menu.option.super_spicy') {
+    const resolved = resolveSelections()
+    const portionFactor = resolved.portion === 'menu.option.half' ? 0.58 : 1
+    const specParts = [resolved.portion, resolved.flavor, resolved.spicy].filter(Boolean).map((key) => t(key))
+    if (!childMode && resolved.spicy === 'menu.option.super_spicy') {
       specParts.push(t('cart.confirmed_risk'))
     }
     const spec = specParts.join(' · ') || t('menu.standard')

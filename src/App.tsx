@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { useChildMode } from '@/hooks/useChildMode'
 import { useElderlyMode } from '@/hooks/useElderlyMode'
-import { initialViewFromHash, useViewRoute } from '@/hooks/useViewRoute'
+import { initialViewFromHash, useViewRoute, writeViewHash } from '@/hooks/useViewRoute'
 import { orderReducer, initialState } from '@/state/orderReducer'
 import { products } from '@/data/menu'
 import { money } from '@/lib/utils'
@@ -84,6 +84,12 @@ export default function App() {
   }, [i18n.language, t])
 
   const changeView = (view: ViewName) => dispatch({ type: 'SET_VIEW', view })
+  // 首页绑定桌台后立即写入 #/welcome：此时 App 不再渲染根组件，无法依赖 useViewRoute，
+  // 否则刷新会停留在 home，绑定状态丢失（影响儿童模式刷新保持与深链接回归）。
+  const bindTable = (table: string) => {
+    writeViewHash('welcome')
+    dispatch({ type: 'BIND_TABLE', table })
+  }
   const submitOrder = () => {
     dispatch({ type: 'SUBMIT_ORDER' })
     setCartOpen(false)
@@ -97,7 +103,7 @@ export default function App() {
   }
 
   if (state.view === 'home' || !state.table) {
-    return <HomeView onBind={(table) => dispatch({ type: 'BIND_TABLE', table })} />
+    return <HomeView onBind={bindTable} />
   }
 
   if (state.view === 'welcome') {

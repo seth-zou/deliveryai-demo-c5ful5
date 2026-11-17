@@ -34,7 +34,7 @@ src/
 └── assets/                # hotpot/broth/beef/vegetables 图片
 e2e/super-spicy.spec.ts    # 超级辣风险提示 E2E 验收
 e2e/view-routing.spec.ts   # 视图 URL hash 路由 E2E 验收
-e2e/child-mode.spec.ts     # 儿童模式开启/受限/退出 E2E 验收
+e2e/child-mode.spec.ts     # 儿童模式 E2E 验收（16 条：入口/受限/退出/刷新/跨标签页/降级/恢复/预览隔离）
 index.html                 # 入口，含初始化语言的内联脚本
 tailwind.config.js         # 自定义色板；vite.config.ts 配 base './' 与 @ 别名
 playwright.config.ts       # E2E 配置
@@ -63,6 +63,7 @@ playwright.config.ts       # E2E 配置
 - 样式只用 Tailwind 类名，不用 CSS Modules / styled-components。
 - 新增 i18n 文案在 `src/i18n.ts` 的 zh/en 两处同步添加，按功能分组（`common.`、`menu.`、`cart.`、`order.` 等）。
 - 新增 `localStorage` 持久化一律 `try/catch` 包裹，不可用时降级内存态；现有 key：`i18nextLng`、`elderly-mode`（`true`/`false`）、`child-mode`（`true`/`false`）、`child-mode-pin-hash`（演示用密码摘要）。
+- 儿童模式附加约定：`sessionStorage: child-mode-recovered` 记录本次会话已做过「摘要缺失自动恢复」，避免反复自愈且不新增绕过入口；`?preview=child-mode` 只改内存态，不得写真实 key；受限口味/服务清单集中在 `src/data/childMode.ts`，加购前必须按当前模式重新校验有效值。
 - 需要在 React 挂载前设置 html 属性/class 时，扩展 `index.html` 的内联脚本。
 - npm 源默认走 `https://registry.npmmirror.com`（见根目录与 `server/.npmrc`）。
 
@@ -74,7 +75,7 @@ playwright.config.ts       # E2E 配置
 | `npm run build` | `tsc -b && vite build`，产物到 `dist/` |
 | `npm run lint` | ESLint，零警告通过 |
 | `npx tsc -b --noEmit` | 仅类型检查 |
-| `npx playwright test` | E2E，webServer 自动拉起 `npm run dev` |
+| `npx playwright test` | E2E，webServer 自动拉起 `npm run dev`（5173）与 `vite preview` 生产构建（4399，供存储降级用例） |
 
 E2E 的执行约束（浏览器来源、报告路径、批量修复、不重跑等）与用例编写/自审规范见 [docs/agent-testing.md](docs/agent-testing.md)。
 

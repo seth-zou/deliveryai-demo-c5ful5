@@ -19,6 +19,15 @@ export function initialViewFromHash(): ViewName | null {
   return hashToView(window.location.hash)
 }
 
+/** 视图切换（如绑定桌台）后同步地址：无合法 hash 时用 replace 规范化，已有 hash 时生成历史记录。 */
+export function writeViewHash(view: ViewName) {
+  if (typeof window === 'undefined') return
+  const target = viewToHash(view)
+  if (window.location.hash === target) return
+  if (hashToView(window.location.hash)) window.location.hash = target
+  else window.history.replaceState(null, '', target)
+}
+
 interface UseViewRouteOptions {
   /** 将 hash 驱动的导航（浏览器前进/后退或手动改地址）应用到应用状态。 */
   onNavigate: (view: ViewName) => void
@@ -34,13 +43,8 @@ interface UseViewRouteOptions {
 export function useViewRoute(view: ViewName, { onNavigate, canView }: UseViewRouteOptions) {
   // 视图 → hash
   useEffect(() => {
-    const target = viewToHash(view)
-    if (window.location.hash === target) return
-    if (hashToView(window.location.hash)) {
-      window.location.hash = target // 正常跳转：写入 hash 以生成一条历史记录，支持前进/后退
-    } else {
-      window.history.replaceState(null, '', target) // 首次加载：规范化地址，不额外新增历史记录
-    }
+    // 视图变化：正常跳转写入 hash 生成历史记录；首次加载用 replace 规范化地址，不额外新增历史记录
+    writeViewHash(view)
   }, [view])
 
   // hash → 视图

@@ -12,6 +12,8 @@ export const CHILD_MODE_STORAGE_KEY = 'child-mode'
 export const CHILD_MODE_PIN_STORAGE_KEY = 'child-mode-pin-hash'
 export const CHILD_MODE_PREVIEW_VALUE = 'child-mode'
 export const CHILD_MODE_PREVIEW_PIN = '1234'
+/** 会话级一次性标记：记录本次会话已做过“摘要缺失自动恢复”，避免每次加载都重复自愈（REQ-011）。 */
+export const CHILD_MODE_RECOVERED_SESSION_KEY = 'child-mode-recovered'
 
 export const isChildBlockedOption = (option: string) =>
   (CHILD_BLOCKED_OPTIONS as readonly string[]).includes(option)

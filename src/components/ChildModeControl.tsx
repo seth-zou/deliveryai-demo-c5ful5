@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Baby, CheckCircle2, KeyRound, LockKeyhole, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { CHILD_MODE_PREVIEW_PIN } from '@/data/childMode'
 import { useChildMode } from '@/hooks/useChildMode'
 import { cn } from '@/lib/utils'
 
@@ -16,12 +17,14 @@ interface ChildModeControlProps {
 
 export function ChildModeControl({ variant = 'pill', className }: ChildModeControlProps) {
   const { t } = useTranslation()
-  const { enabled, isPreview, enable, disable } = useChildMode()
+  const { enabled, isPreview, recovered, enable, disable, dismissRecovered } = useChildMode()
   const [step, setStep] = useState<DialogStep>('closed')
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
 
   const open = () => {
+    // 异常恢复提示属于一次性通知，打开任意弹窗时收起，避免与弹窗内容重复。
+    if (recovered) dismissRecovered()
     setPin('')
     setError('')
     setStep(enabled ? 'exit' : 'enable')
@@ -62,6 +65,18 @@ export function ChildModeControl({ variant = 'pill', className }: ChildModeContr
     if (step === 'exit') submitExit()
   }
 
+  // 摘要缺失自愈的一次性提示（REQ-011）：横幅形态放在琥珀色条内，胶囊/图标形态放在入口下方。
+  const renderRecoveredNotice = () => {
+    if (!recovered) return null
+    return (
+      <p role="status" className={cn('mx-auto w-full max-w-7xl px-4 py-2 text-xs font-semibold text-charcoal-700', className)}>
+        {t('child.recovered_notice')}
+      </p>
+    )
+  }
+
+  const banner = !enabled && recovered ? renderRecoveredNotice() : null
+
   const trigger = variant === 'banner'
     ? enabled
       ? (
@@ -75,9 +90,10 @@ export function ChildModeControl({ variant = 'pill', className }: ChildModeContr
               {t('child.exit_action')}
             </button>
           </div>
+          {renderRecoveredNotice()}
         </div>
       )
-      : null
+      : banner
     : (
       <button
         onClick={open}
@@ -105,6 +121,7 @@ export function ChildModeControl({ variant = 'pill', className }: ChildModeContr
 
   return (
     <>
+      {variant === 'pill' && banner}
       {trigger}
       <Dialog open={step !== 'closed'} onOpenChange={(next) => { if (!next) close() }}>
         <DialogContent title={step === 'enable' ? t('child.enable_title') : t('child.exit_title')}>
@@ -136,7 +153,7 @@ export function ChildModeControl({ variant = 'pill', className }: ChildModeContr
               </div>
               <PinField label={t('child.pin_label_exit')} value={pin} onChange={onPinChange} onEnter={onEnter} />
               {error && <p className="mt-2 text-sm font-semibold text-chili-600">{error}</p>}
-              {isPreview && <p className="mt-2 text-xs font-semibold text-amber-500">{t('child.preview_pin_hint')}</p>}
+              {isPreview && <p className="mt-2 text-xs font-semibold text-amber-500">{t('child.preview_pin_hint', { pin: CHILD_MODE_PREVIEW_PIN })}</p>}
               <div className="mt-5 flex gap-3">
                 <Button variant="outline" className="flex-1" onClick={close}>{t('child.cancel')}</Button>
                 <Button className="flex-1" onClick={submitExit}><ShieldCheck size={16} />{t('child.confirm_exit')}</Button>
